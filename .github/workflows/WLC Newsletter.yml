@@ -1,0 +1,82 @@
+name: WLC Newsletter
+ 
+on:
+  workflow_dispatch:
+    inputs:
+      newsletter_type:
+        description: "Newsletter type: daily | weekly | weekprep"
+        required: true
+        default: "daily"
+ 
+  schedule:
+    # ── Daily Brief ──────────────────────────────────────────────
+    # Mon–Fri at 06:00 UTC = 08:00 AM UTC+2
+    # Sends previous day's Vital Knowledge posts
+    - cron: "0 6 * * 1-5"
+ 
+    # ── Weekly Recap ─────────────────────────────────────────────
+    # Friday at 16:00 UTC = 06:00 PM UTC+2
+    - cron: "0 16 * * 5"
+ 
+    # ── Getting Ready for the Week ───────────────────────────────
+    # Sunday at 06:00 UTC = 08:00 AM UTC+2
+    - cron: "0 6 * * 0"
+ 
+jobs:
+  send-newsletter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+ 
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+ 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+ 
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+ 
+      # ── Determine which newsletter type to send ────────────────
+      # Manual trigger uses the input; scheduled runs use the time
+      - name: Set newsletter type
+        id: set_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TYPE=${{ github.event.inputs.newsletter_type }}" >> $GITHUB_OUTPUT
+ 
+          else
+            HOUR=$(date -u +%H)
+            DOW=$(date -u +%u)   # 1=Mon … 7=Sun
+ 
+            if [ "$DOW" = "5" ] && [ "$HOUR" = "16" ]; then
+              # Friday 4 PM UTC → weekly recap
+              echo "TYPE=weekly" >> $GITHUB_OUTPUT
+ 
+            elif [ "$DOW" = "7" ]; then
+              # Sunday → week prep
+              echo "TYPE=weekprep" >> $GITHUB_OUTPUT
+ 
+            else
+              # Mon–Fri 6 AM UTC → daily brief
+              echo "TYPE=daily" >> $GITHUB_OUTPUT
+            fi
+          fi
+ 
+      - name: Run newsletter script
+        env:
+          GMAIL_ADDRESS:      ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python send_newsletter.py ${{ steps.set_type.outputs.TYPE }}
+ 
+      - name: Save sent-articles log
+        run: |
+          git config user.name  "WLC Newsletter Bot"
+          git config user.email "bot@github.com"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || \
+            git commit -m "chore: update sent log [${{ steps.set_type.outputs.TYPE }}] [skip ci]"
+          git push
