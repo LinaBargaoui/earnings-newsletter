@@ -1,0 +1,45 @@
+name: Daily Earnings Newsletter
+
+on:
+  schedule:
+    # Runs every day at 7:00 AM Eastern (12:00 UTC)
+    # Change the time here: https://crontab.guru
+    - cron: "0 12 * * *"
+
+  # Also lets you trigger it manually from GitHub's UI (for testing)
+  workflow_dispatch:
+
+jobs:
+  send-newsletter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to save the sent_articles.json log
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run newsletter script
+        env:
+          GMAIL_ADDRESS:      ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python send_newsletter.py
+
+      - name: Save sent-articles log
+        # Commits the updated sent_articles.json back to the repo
+        # so duplicates are remembered across runs
+        run: |
+          git config user.name  "Newsletter Bot"
+          git config user.email "bot@github.com"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || \
+            git commit -m "chore: update sent articles log [skip ci]"
+          git push
