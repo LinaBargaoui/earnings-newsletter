@@ -18,9 +18,8 @@ from bs4 import BeautifulSoup
 # CONFIGURATION — Edit these values
 # ──────────────────────────────────────────────
 RECIPIENTS = [
-    "subscriber1@example.com",
-    "subscriber2@example.com",
-    # Add as many emails as you like
+    "kromanteau@whitelight-capital.com",
+    "lina@whitelight-capital.com",
 ]
 
 SENDER_NAME    = "WLC Market Recap"
