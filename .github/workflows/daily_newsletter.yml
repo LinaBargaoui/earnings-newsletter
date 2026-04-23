@@ -2,9 +2,9 @@ name: Daily Earnings Newsletter
 
 on:
   schedule:
-    # Runs every day at 7:00 AM Eastern (12:00 UTC)
+    # Runs every day at 7:00 AM Eastern ()
     # Change the time here: https://crontab.guru
-    - cron: "0 12 * * *"
+    - cron: "0 08 * * *"
 
   # Also lets you trigger it manually from GitHub's UI (for testing)
   workflow_dispatch:
